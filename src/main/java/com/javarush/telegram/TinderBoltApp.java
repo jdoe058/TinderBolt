@@ -4,6 +4,7 @@ import com.javarush.telegram.ChatGPTService;
 import com.javarush.telegram.DialogMode;
 import com.javarush.telegram.MultiSessionTelegramBot;
 import com.javarush.telegram.UserInfo;
+import com.plexpt.chatgpt.ChatGPT;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -22,6 +23,7 @@ public class TinderBoltApp extends MultiSessionTelegramBot {
 
     final private ChatGPTService chatGPT = new ChatGPTService(OPEN_AI_TOKEN);
     private DialogMode currentMode = null;
+    final private ArrayList<String> list = new ArrayList<>();
 
     @Override
     public void onUpdateEventReceived(Update update) {
@@ -45,44 +47,56 @@ public class TinderBoltApp extends MultiSessionTelegramBot {
                 sendPhotoMessage("gpt");
                 sendTextMessage(loadMessage("gpt"));
                 return;
+            case "/date":
+                currentMode = DialogMode.DATE;
+                sendPhotoMessage("date");
+                sendTextButtonsMessage(loadMessage("date"),
+                        "Ариана Гранде", "date_grande",
+                        "Марго Робби", "date_robbie",
+                        "Зендея", "date_zendaya",
+                        "Райн Гослинг", "date_gosling",
+                        "Том Харди", "date_hardy");
+                return;
+            case "/message":
+                currentMode = DialogMode.MESSAGE;
+                sendPhotoMessage("message");
+                sendTextButtonsMessage(loadMessage("message"),
+                        "Следующее сообщение", "message_next",
+                        "Пригласить на свидание", "message_date");
+                return;
         }
+
+        String query;
+        Message msg;
 
         switch (currentMode) {
             case GPT:
-                String prompt = loadPrompt("gpt");
-                String answer = chatGPT.sendMessage(prompt, message);
-                sendTextMessage(answer);
-                return;
+                msg = sendTextMessage("Подождите пару секунд - ChatGPT думает...");
+                updateTextMessage(msg, chatGPT.sendMessage(loadPrompt("gpt"), message));
+                break;
+            case DATE:
+                query = getCallbackQueryButtonKey();
+                if (query.startsWith("date_")) {
+                    sendPhotoMessage(query);
+                    sendTextMessage("Отличный выбор!\n Твоя задача пригласить девушку/парня на свидание за ❤\uFE0F 5 сообщений.");
+                    chatGPT.setPrompt(loadPrompt(query));
+                } else {
+                    msg = sendTextMessage("Подождите, девушка набирает текст...");
+                    updateTextMessage(msg, chatGPT.addMessage(message));
+                }
+                break;
+            case MESSAGE:
+                query = getCallbackQueryButtonKey();
+                if (query.startsWith("message")) {
+                    msg = sendTextMessage("Подождите пару секунд - ChatGPT думает...");
+                    updateTextMessage(msg, chatGPT.sendMessage(loadPrompt(query), String.join("\n\n", list)));
+                } else {
+                    list.add(message);
+                }
+                break;
             default:
-                sendTextMessage("*Привет!*");
-                sendTextMessage("_Привет!_");
-                sendTextMessage("Вы написали " + message);
-                sendTextButtonsMessage("Выберете режим работы:", "Старт", "start", "Стоп", "stop");
+                sendTextMessage("*Упс...* что-то пошло не так");
         }
-
-
-
-        /*
-        if (message.equals("/start")) {
-            sendPhotoMessage("main");
-            String text = loadMessage("main");
-            sendTextMessage(text);
-            return;
-        }
-
-        if (message.equals("/gpt")) {
-            sendPhotoMessage("gpt");
-            sendTextMessage("Напишите ваше сообщение *chatGPT*:");
-            return;
-
-        }
-
-        sendTextMessage("*Привет!*");
-        sendTextMessage("_Привет!_");
-        sendTextMessage("Вы написали " + message);
-        sendTextButtonsMessage("Выберете режим работы:", "Старт", "start", "Стоп", "stop");
-
-         */
     }
 
     public static void main(String[] args) throws TelegramApiException {
