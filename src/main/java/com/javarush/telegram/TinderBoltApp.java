@@ -25,6 +25,9 @@ public class TinderBoltApp extends MultiSessionTelegramBot {
     private DialogMode currentMode = null;
     final private ArrayList<String> list = new ArrayList<>();
 
+    private UserInfo userInfo;
+    private int questionCount;
+
     @Override
     public void onUpdateEventReceived(Update update) {
         //TODO: основной функционал бота будем писать здесь
@@ -64,7 +67,22 @@ public class TinderBoltApp extends MultiSessionTelegramBot {
                         "Следующее сообщение", "message_next",
                         "Пригласить на свидание", "message_date");
                 return;
+            case "/profile":
+                currentMode = DialogMode.PROFILE;
+                userInfo = new UserInfo();
+                questionCount = 1;
+                sendPhotoMessage("profile");
+                sendTextMessage(loadMessage("profile"));
+                return;
+            case "/opener":
+                currentMode = DialogMode.OPENER;
+                userInfo = new UserInfo();
+                questionCount = 1;
+                sendPhotoMessage("opener");
+                sendTextMessage(loadMessage("opener"));
+                return;
         }
+
 
         String query;
         Message msg;
@@ -93,6 +111,56 @@ public class TinderBoltApp extends MultiSessionTelegramBot {
                 } else {
                     list.add(message);
                 }
+                break;
+            case PROFILE:
+                switch (questionCount++) {
+                    case 1:
+                        userInfo.age = message;
+                        sendTextMessage("Кем вы работаете?");
+                        return;
+                    case 2:
+                        userInfo.occupation = message;
+                        sendTextMessage("Какое у вас хобби?");
+                        return;
+                    case 3:
+                        userInfo.hobby = message;
+                        sendTextMessage("Что вам НЕ нравится в людях?");
+                        return;
+                    case 4:
+                        userInfo.annoys = message;
+                        sendTextMessage("Цель знакомства?");
+                        return;
+                    case 5:
+                        userInfo.goals = message;
+                }
+
+                msg = sendTextMessage("Подождите пару секунд - ChatGPT думает...");
+                updateTextMessage(msg, chatGPT.sendMessage(loadPrompt("profile"), userInfo.toString()));
+                break;
+            case OPENER:
+                switch (questionCount++) {
+                    case 1:
+                        userInfo.name = message;
+                        sendTextMessage("Сколько ей лет?");
+                        return;
+                    case 2:
+                        userInfo.age = message;
+                        sendTextMessage("Есть ли у нее хобби?");
+                        return;
+                    case 3:
+                        userInfo.hobby = message;
+                        sendTextMessage("Кем она работает?");
+                        return;
+                    case 4:
+                        userInfo.occupation = message;
+                        sendTextMessage("Цель знакомства?");
+                        return;
+                    case 5:
+                        userInfo.goals = message;
+                }
+
+                msg = sendTextMessage("Подождите пару секунд - ChatGPT думает...");
+                updateTextMessage(msg, chatGPT.sendMessage(loadPrompt("opener"), userInfo.toString()));
                 break;
             default:
                 sendTextMessage("*Упс...* что-то пошло не так");
